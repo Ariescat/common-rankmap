@@ -1,17 +1,16 @@
+package com.lqz.utils;
+
 import org.apache.commons.lang3.time.StopWatch;
 
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Hello world!
- */
-public class App {
+public class Test {
 
     /**
-     * id, score -> RankData
+     * id, score -> com.lqz.utils.RankData
      */
-    private DynamicRankMap<Integer, Integer, RankData> dynamicRankMap = DynamicRankMap.create(new Comparator<Integer>() {
+    private DynamicRankMap<Integer, Integer, SimpleRankData> dynamicRankMap = DynamicRankMap.create(new Comparator<Integer>() {
         @Override
         public int compare(Integer o1, Integer o2) {
             return o2 - o1;
@@ -19,19 +18,19 @@ public class App {
     });
 
     public static void main(String[] args) {
-        new App().run();
+        new Test().run();
     }
 
     private void run() {
 
         StopWatch watch = StopWatch.createStarted();
 
-        dynamicRankMap.put(new RankData(1, 15));
-        dynamicRankMap.put(new RankData(2, 5));
-        dynamicRankMap.put(new RankData(3, 20));
-        dynamicRankMap.put(new RankData(4, 10));
-        dynamicRankMap.put(new RankData(6, 20));
-        dynamicRankMap.put(new RankData(5, 20));
+        dynamicRankMap.put(new SimpleRankData(1, 15));
+        dynamicRankMap.put(new SimpleRankData(2, 5));
+        dynamicRankMap.put(new SimpleRankData(3, 20));
+        dynamicRankMap.put(new SimpleRankData(4, 10));
+        dynamicRankMap.put(new SimpleRankData(6, 20));
+        dynamicRankMap.put(new SimpleRankData(5, 20));
 
         watch.stop();
         System.err.println("time: " + watch.getTime(TimeUnit.MILLISECONDS));
