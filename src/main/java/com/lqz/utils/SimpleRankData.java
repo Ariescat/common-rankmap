@@ -25,14 +25,21 @@ public class SimpleRankData extends SimpleRankDataAdapter<SimpleRankData> {
         return score;
     }
 
-    @Override
+    /**
+     * 获取排行
+     */
     public int getRank() {
         return rank;
     }
 
-    @Override
-    public void setRank(int rank) {
+    /**
+     * 修改排行
+     * <p>
+     * 配合 {@link DynamicRankMap#toList()} 使用
+     */
+    public SimpleRankData setRank(int rank) {
         this.rank = rank;
+        return this;
     }
 
     @Override

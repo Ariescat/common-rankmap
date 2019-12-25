@@ -5,7 +5,6 @@ import com.google.common.collect.Ordering;
 import com.google.common.collect.TreeMultimap;
 
 import java.util.*;
-import java.util.function.Function;
 
 /**
  * 动态排序map，底层由RBTree实现
@@ -21,45 +20,47 @@ import java.util.function.Function;
  */
 public class DynamicRankMap<K, S, V extends IRankData<K, S, V>> {
 
-    private Map<K, V> cacheMap;
-    private TreeMultimap<S, V> multiMap;
-
-    private DynamicRankMap(Map<K, V> cacheMap, TreeMultimap<S, V> multiMap) {
-        this.cacheMap = cacheMap;
-        this.multiMap = multiMap;
-    }
-
+    // -------------------- create --------------------
     public static <K, S extends Comparable, V extends IRankData<K, S, V>> DynamicRankMap<K, S, V> create() {
-        return new DynamicRankMap<>(
+        return new DynamicRankMap<K, S, V>(
                 Maps.newHashMap(),
-                TreeMultimap.create()
+                TreeMultimap.create(Ordering.natural().reverse(), Ordering.natural())
         );
     }
 
     public static <K, S, V extends IRankData<K, S, V>> DynamicRankMap<K, S, V> create(Comparator<? super S> keyComparator) {
-        return new DynamicRankMap<>(
+        return new DynamicRankMap<K, S, V>(
                 Maps.newHashMap(),
                 TreeMultimap.create(keyComparator, Ordering.natural())
         );
     }
 
-    public static <K, S, V extends IRankData<K, S, V>> DynamicRankMap<K, S, V> create(
-            Comparator<? super S> keyComparator,
-            Comparator<? super V> valueComparator) {
-        return new DynamicRankMap<>(
+    public static <K, S, V extends IRankData<K, S, V>> DynamicRankMap<K, S, V> create(Comparator<? super S> keyComparator,
+                                                                                      Comparator<? super V> valueComparator) {
+        return new DynamicRankMap<K, S, V>(
                 Maps.<K, V>newHashMap(),
                 TreeMultimap.create(keyComparator, valueComparator)
         );
     }
 
-    public static <K, S, V extends IRankData<K, S, V>> DynamicRankMap<K, S, V> create(
-            Map<K, V> cacheMap,
-            Comparator<? super S> keyComparator,
-            Comparator<? super V> valueComparator) {
-        return new DynamicRankMap<>(
+    public static <K, S, V extends IRankData<K, S, V>> DynamicRankMap<K, S, V> create(Map<K, V> cacheMap,
+                                                                                      Comparator<? super S> keyComparator,
+                                                                                      Comparator<? super V> valueComparator) {
+        return new DynamicRankMap<K, S, V>(
                 cacheMap,
                 TreeMultimap.create(keyComparator, valueComparator)
         );
+    }
+
+    private Map<K, V> cacheMap;
+    /**
+     * 本质上是封装了 TreeMap[score -> TreeSet]
+     */
+    private TreeMultimap<S, V> rankMap;
+
+    private DynamicRankMap(Map<K, V> cacheMap, TreeMultimap<S, V> rankMap) {
+        this.cacheMap = cacheMap;
+        this.rankMap = rankMap;
     }
 
     private V getItemOrCreate(V value) {
@@ -67,12 +68,11 @@ public class DynamicRankMap<K, S, V extends IRankData<K, S, V>> {
     }
 
     public void put(V value) {
-        V cache = getItemOrCreate(value);
-        if (cache != null) {
-            NavigableSet<V> set = multiMap.get(value.getScore());
-            set.remove(value);
+        V oldValue = getItemOrCreate(value);
+        if (oldValue != null) {
+            rankMap.remove(oldValue.getScore(), oldValue);
         }
-        multiMap.put(value.getScore(), value);
+        rankMap.put(value.getScore(), value);
         cacheMap.put(value.getKey(), value);
     }
 
@@ -80,65 +80,81 @@ public class DynamicRankMap<K, S, V extends IRankData<K, S, V>> {
         return cacheMap;
     }
 
-    public TreeMultimap<S, V> getMultiMap() {
-        return multiMap;
+    public TreeMultimap<S, V> getRankMap() {
+        return rankMap;
     }
 
     public NavigableSet<V> get(S score) {
-        return multiMap.get(score);
+        return rankMap.get(score);
     }
 
     public S firstEntry() {
-        return multiMap.asMap().firstKey();
+        return rankMap.asMap().firstKey();
     }
 
     public S lastEntry() {
-        return multiMap.asMap().lastKey();
+        return rankMap.asMap().lastKey();
     }
 
     /**
      * 找到第一个大于或等于指定key的值
      */
     public S ceilingKey(S score) {
-        return multiMap.asMap().ceilingKey(score);
+        return rankMap.asMap().ceilingKey(score);
     }
 
     /**
      * 找到第一个小于或等于指定key的值
      */
     public S floorKey(S score) {
-        return multiMap.asMap().floorKey(score);
+        return rankMap.asMap().floorKey(score);
+    }
+
+    public void remove(V value) {
+        V v = getItemOrCreate(value);
+        if (v != null) {
+            rankMap.remove(v.getScore(), v);
+            cacheMap.remove(v.getKey());
+        }
     }
 
     public int size() {
-        return multiMap.size();
+        return rankMap.size();
     }
 
     public boolean isEmpty() {
-        return multiMap.isEmpty();
+        return rankMap.isEmpty();
     }
 
     public void clear() {
         cacheMap.clear();
-        multiMap.clear();
+        rankMap.clear();
     }
 
     public List<V> toList() {
         return toList(null);
     }
 
-    public List<V> toList(Function<V, V> function) {
-        if (multiMap.isEmpty()) {
+    public List<V> toList(Function<V> function) {
+        if (rankMap.isEmpty()) {
             return Collections.emptyList();
         }
         int i = 1;
-        ArrayList<V> list = new ArrayList<>(multiMap.size());
-        for (Collection<V> value : multiMap.asMap().values()) {
+        ArrayList<V> list = new ArrayList<>(rankMap.size());
+        for (Collection<V> value : rankMap.asMap().values()) {
             for (V v : value) {
-                v.setRank(i++);
-                list.add(function == null ? v : function.apply(v));
+                list.add(function == null ? v : function.apply(v, i++));
             }
         }
         return list;
+    }
+
+    @Override
+    public String toString() {
+        return rankMap.toString();
+    }
+
+    public interface Function<V> {
+        V apply(V data, int rank);
     }
 }

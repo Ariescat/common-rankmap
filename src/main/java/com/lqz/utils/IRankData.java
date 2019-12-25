@@ -20,16 +20,4 @@ public interface IRankData<K, S, V> extends Comparable<V> {
      * 生成显示快照，防止排行榜更新导致数据不一致
      */
     V copy();
-
-    /**
-     * 获取排行
-     */
-    int getRank();
-
-    /**
-     * 修改排行
-     * <p>
-     * 配合 {@link DynamicRankMap#toList()} 使用
-     */
-    void setRank(int rank);
 }

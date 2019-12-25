@@ -43,7 +43,7 @@ public abstract class SimpleRankDataAdapter<V extends SimpleRankDataAdapter<V>> 
     @Override
     public int compareTo(V o) {
         return o.getScore().equals(getScore())
-                ? (int) (o.getLastUpdateTime() == lastUpdateTime ? o.getKey() - getKey() : lastUpdateTime - getLastUpdateTime())
+                ? (int) (o.getLastUpdateTime() == lastUpdateTime ? getKey() - o.getKey() : lastUpdateTime - getLastUpdateTime())
                 : (o.getScore() - getScore());
     }
 }
